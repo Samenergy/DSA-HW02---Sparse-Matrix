@@ -1,7 +1,3 @@
-Here's a simple README file for your sparse matrix operations project:
-
----
-
 # Sparse Matrix Operations
 
 ## Description
@@ -15,13 +11,18 @@ DSA-HW02---Sparse-Matrix/
 │
 ├── code/
 │   ├── src/
-│   │   └── sparse_matrix.py
-│   └── outputs/
-│       └── result.txt
+│       └── sparse_matrix.py
+|
+|── outputs/
+│       ├── easy_sample_01.txt
+│       └── easy_sample_02.txt
+|       ├── ...
 │
 ├── sample_inputs/
 │   ├── easy_sample_01_1.txt
 │   └── easy_sample_01_2.txt
+|   ├── easy_sample_01_3.txt
+│   └── ...
 │
 └── README.md
 ```
@@ -35,7 +36,7 @@ DSA-HW02---Sparse-Matrix/
 1. Clone the repository:
 
 ```sh
-git clone <repository-url>
+git clone "https://github.com/Samenergy/DSA-HW02---Sparse-Matrix.git"
 ```
 
 2. Navigate to the project directory:
@@ -76,14 +77,11 @@ The result of the operation will be saved in `code/outputs/result.txt`.
 
 ## Example
 
-Given two input files `easy_sample_01_1.txt` and `easy_sample_01_2.txt`, the script will perform the selected operation and save the result in `result.txt`.
+Given two input files `easy_sample_01_1.txt` and `easy_sample_01_2.txt`, the script will perform the selected operation and save the result in `easy_sample_01.txt`.
 
 ## Notes
 
 - Ensure the matrices conform to the mathematical rules for the selected operation.
 - Handle file paths and ensure input files exist in the specified directory.
 
-## License
-
-This project is licensed under the MIT License.
 
