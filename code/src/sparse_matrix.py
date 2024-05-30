@@ -1,125 +1,173 @@
-class SparseMatrix:
-    def __init__(self, numRows=None, numCols=None, matrixFilePath=None):
-        self.numRows = numRows
-        self.numCols = numCols
-        self.elements = {}
-        
-        if matrixFilePath:
-            self._read_from_file(matrixFilePath)
-    
-    def _read_from_file(self, filePath):
-        try:
-            with open(filePath, 'r') as file:
-                lines = file.readlines()
-                self.numRows = int(lines[0].split('=')[1])
-                self.numCols = int(lines[1].split('=')[1])
+import os
 
-                for line in lines[2:]:
-                    if line.strip():
-                        parts = line.strip().strip('()').split(',')
-                        row = int(parts[0])
-                        col = int(parts[1])
-                        value = int(parts[2])
-                        self.elements[(row, col)] = value
-        except FileNotFoundError:
-            raise FileNotFoundError(f"File not found: {filePath}")
-        except Exception as e:
-            raise ValueError("Input file has wrong format") from e
-    
-    def getElement(self, row, col):
-        if 0 <= row < self.numRows and 0 <= col < self.numCols:
-            return self.elements.get((row, col), 0)
-        else:
-            raise IndexError("Row or column index out of bounds")
-    
-    def setElement(self, row, col, value):
-        if 0 <= row < self.numRows and 0 <= col < self.numCols:
-            if value != 0:
-                self.elements[(row, col)] = value
-            elif (row, col) in self.elements:
-                del self.elements[(row, col)]
-        else:
-            raise IndexError("Row or column index out of bounds")
-    
-    def add(self, other):
-        if self.numRows != other.numRows or self.numCols != other.numCols:
-            raise ValueError("Matrix dimensions do not match for addition")
-        
-        result = SparseMatrix(self.numRows, self.numCols)
-        
-        for (row, col), value in self.elements.items():
-            result.setElement(row, col, value)
-        
-        for (row, col), value in other.elements.items():
-            print(f"Adding element at ({row}, {col}): {value} + {result.getElement(row, col)}")
-            result.setElement(row, col, value + result.getElement(row, col))
-        
-        return result
-    
-    def subtract(self, other):
-        if self.numRows != other.numRows or self.numCols != other.numCols:
-            raise ValueError("Matrix dimensions do not match for subtraction")
-        
-        result = SparseMatrix(self.numRows, self.numCols)
-        
-        for (row, col), value in self.elements.items():
-            result.setElement(row, col, value)
-        
-        for (row, col), value in other.elements.items():
-            result.setElement(row, col, result.getElement(row, col) - value)
-        
-        return result
-    
-    def multiply(self, other):
-        if self.numCols != other.numRows:
-            raise ValueError("Matrix dimensions do not match for multiplication")
-        
-        result = SparseMatrix(self.numRows, other.numCols)
-        
-        for (row1, col1), value1 in self.elements.items():
-            for col2 in range(other.numCols):
-                if (col1, col2) in other.elements:
-                    value2 = other.getElement(col1, col2)
-                    result.setElement(row1, col2, result.getElement(row1, col2) + value1 * value2)
-        
-        return result
+class InvalidMatrixFormatException(Exception):
+    pass
 
-    def save_to_file(self, filePath):
-        with open(filePath, 'w') as file:
-            file.write(f"rows={self.numRows}\n")
-            file.write(f"cols={self.numCols}\n")
-            for (row, col), value in sorted(self.elements.items()):
-                file.write(f"({row}, {col}, {value})\n")
+def read_sparse_matrix(file_path):
+    sparse_matrix = {}
+    try:
+        with open(file_path, 'r') as file:
+            rows_line = file.readline().strip()
+            cols_line = file.readline().strip()
+            
+            if rows_line.startswith("rows="):
+                num_rows = int(rows_line.split('=')[1])
+            else:
+                raise InvalidMatrixFormatException(f"Invalid format for rows in file {file_path}")
+            
+            if cols_line.startswith("cols="):
+                num_cols = int(cols_line.split('=')[1])
+            else:
+                raise InvalidMatrixFormatException(f"Invalid format for cols in file {file_path}")
+            
+            for line in file:
+                if line.strip():  # Ignore empty lines
+                    parts = extract_numbers_from_line(line)
+                    if len(parts) != 3:
+                        print(f"Warning: Invalid line format: {line.strip()}")
+                        continue
+                    try:
+                        row, col, value = map(int, parts)
+                    except ValueError:
+                        print(f"Warning: Invalid number format in line: {line.strip()}")
+                        continue
+                    
+                    if row not in sparse_matrix:
+                        sparse_matrix[row] = {}
+                    sparse_matrix[row][col] = value
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File {file_path} not found.")
+    except Exception as e:
+        raise InvalidMatrixFormatException(f"An error occurred while reading the file {file_path}: {e}")
+    
+    return sparse_matrix
+
+def extract_numbers_from_line(line):
+    numbers = []
+    num = ''
+    for char in line:
+        if char.isdigit() or char == '-':
+            num += char
+        else:
+            if num:
+                numbers.append(num)
+                num = ''
+    if num:
+        numbers.append(num)
+    return numbers
+
+def write_to_file(file_path, content):
+    with open(file_path, 'w') as file:
+        file.write(content)
+
+def add_matrices(matrix1, matrix2):
+    result = {}
+    for row in matrix1:
+        result[row] = {}
+        for col in matrix1[row]:
+            result[row][col] = matrix1[row].get(col, 0) + matrix2.get(row, {}).get(col, 0)
+    for row in matrix2:
+        if row not in result:
+            result[row] = {}
+        for col in matrix2[row]:
+            if col not in result[row]:
+                result[row][col] = matrix2[row][col]
+    return result
+
+def subtract_matrices(matrix1, matrix2):
+    result = {}
+    for row in matrix1:
+        result[row] = {}
+        for col in matrix1[row]:
+            result[row][col] = matrix1[row].get(col, 0) - matrix2.get(row, {}).get(col, 0)
+    for row in matrix2:
+        if row not in result:
+            result[row] = {}
+        for col in matrix2[row]:
+            if col not in result[row]:
+                result[row][col] = -matrix2[row][col]
+    return result
+
+def multiply_matrices(matrix1, matrix2):
+    result = {}
+    for row1 in matrix1:
+        for col1 in matrix1[row1]:
+            for col2 in matrix2.get(col1, {}):
+                if row1 not in result:
+                    result[row1] = {}
+                if col2 not in result[row1]:
+                    result[row1][col2] = 0
+                result[row1][col2] += matrix1[row1][col1] * matrix2[col1][col2]
+    return result
+
+def format_matrix(matrix):
+    formatted = ""
+    for row, cols in matrix.items():
+        for col, value in cols.items():
+            formatted += f"{row} {col} {value}\n"
+    return formatted
 
 def main():
-    input_path1 = './sample_input_for_students/easy_sample_01_1.txt'
-    input_path2 = './sample_input_for_students/easy_sample_01_2.txt'
-    output_path = './outputs/result.txt'
-    
-    operation = input("Enter the operation (add, subtract, multiply): ").strip().lower()
-    
-    print(f"Reading matrix from {input_path1}")
-    matrix1 = SparseMatrix(matrixFilePath=input_path1)
-    print(f"Reading matrix from {input_path2}")
-    matrix2 = SparseMatrix(matrixFilePath=input_path2)
-    
-    print(f"Matrix 1: {matrix1.numRows} x {matrix1.numCols}")
-    print(f"Matrix 2: {matrix2.numRows} x {matrix2.numCols}")
-    
-    if operation == 'add':
-        result = matrix1.add(matrix2)
-    elif operation == 'subtract':
-        result = matrix1.subtract(matrix2)
-    elif operation == 'multiply':
-        result = matrix1.multiply(matrix2)
-    else:
-        print("Invalid operation. Please enter 'add', 'subtract', or 'multiply'.")
-        return
-    
-    print(f"Saving result to {output_path}")
-    result.save_to_file(output_path)
-    print(f"Resulting matrix saved to {output_path}")
+    try:
+        # Input the paths for input and output files
+        input_path1 = input("Enter the path for the first matrix file: ").strip()
+        input_path2 = input("Enter the path for the second matrix file: ").strip()
+        output_path = input("Enter the path for the output file: ").strip()
+        
+        print(f"Reading matrix from {input_path1}")
+        print(f"Reading matrix from {input_path2}")
 
-if __name__ == '__main__':
+        # Read the matrices from the specified files
+        matrix1 = read_sparse_matrix(input_path1)
+        matrix2 = read_sparse_matrix(input_path2)
+
+        output_content = ""
+
+        output_content += f"Matrix 1 ({input_path1}):\n"
+        output_content += format_matrix(matrix1)
+
+        output_content += f"\nMatrix 2 ({input_path2}):\n"
+        output_content += format_matrix(matrix2)
+
+        while True:
+            print("\nChoose an operation:")
+            print("1. Add matrix 1 and matrix 2")
+            print("2. Subtract matrix 1 from matrix 2")
+            print("3. Multiply matrix 1 by matrix 2")
+            print("4. Exit")
+            operation_choice = int(input("Enter your choice: "))
+
+            if operation_choice == 1:
+                result = add_matrices(matrix1, matrix2)
+                print("Addition Result:")
+                print(format_matrix(result))
+                operation_name = "Addition Result"
+            elif operation_choice == 2:
+                result = subtract_matrices(matrix1, matrix2)
+                print("Subtraction Result:")
+                print(format_matrix(result))
+                operation_name = "Subtraction Result"
+            elif operation_choice == 3:
+                result = multiply_matrices(matrix1, matrix2)
+                print("Multiplication Result:")
+                print(format_matrix(result))
+                operation_name = "Multiplication Result"
+            elif operation_choice == 4:
+                print("Exiting...")
+                break
+            else:
+                print("Invalid choice. Please choose a number from 1 to 4.")
+                continue
+
+            output_content += f"\n{operation_name}:\n"
+            output_content += format_matrix(result)
+
+        # Write the output to the specified file
+        write_to_file(output_path, output_content)
+        print(f"Output saved to {output_path}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
     main()
-
